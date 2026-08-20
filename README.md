@@ -13,6 +13,10 @@ Transaction management for [Drizzle ORM](https://orm.drizzle.team/) with propaga
 Drizzle requires you to pass a transaction object explicitly to every function that needs to participate in a transaction:
 
 ```ts
+const order = await db.transaction(async (tx) => {
+  return createOrder(tx);
+});
+
 async function createOrder(tx: DbTransaction) {
   const [order] = await tx.insert(orders).values(...).returning();
   await createOrderItems(tx, order.id);
@@ -22,10 +26,6 @@ async function createOrder(tx: DbTransaction) {
 async function createOrderItems(tx: DbTransaction, orderId: number) {
   await tx.insert(orderItems).values(...);
 }
-
-const order = await db.transaction(async (tx) => {
-  return createOrder(tx);
-});
 ```
 
 This leaks transaction concerns throughout your call stack. `drizzle-transact` eliminates this by storing the active transaction in `AsyncLocalStorage`, making it implicitly available anywhere within the transactional context.
@@ -34,6 +34,8 @@ This leaks transaction concerns throughout your call stack. `drizzle-transact` e
 
 ```ts
 import { ensureTransaction } from './db';
+
+const order = await ensureTransaction(() => createOrder());
 
 async function createOrder() {
   return ensureTransaction(async (tx) => {
@@ -48,8 +50,6 @@ async function createOrderItems(orderId: number) {
     await tx.insert(orderItems).values(...);
   });
 }
-
-const order = await ensureTransaction(() => createOrder());
 ```
 
 No transaction object is passed between functions. When `createOrderItems` calls `ensureTransaction`, it joins the transaction already started by the outer call. If the callback throws, the transaction is rolled back. Otherwise it commits.
