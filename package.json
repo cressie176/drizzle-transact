@@ -1,6 +1,6 @@
 {
   "name": "drizzle-transact",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "description": "Transaction management for Drizzle ORM using AsyncLocalStorage",
   "main": "./lib/index.js",
   "types": "./lib/index.d.ts",
@@ -32,8 +32,17 @@
     "pg": "^8.13.3",
     "@types/pg": "^8.11.11"
   },
-  "files": ["lib"],
-  "keywords": ["drizzle", "drizzle-orm", "transaction", "async-local-storage", "postgresql", "typescript"],
+  "files": [
+    "lib"
+  ],
+  "keywords": [
+    "drizzle",
+    "drizzle-orm",
+    "transaction",
+    "async-local-storage",
+    "postgresql",
+    "typescript"
+  ],
   "license": "MIT",
   "repository": {
     "type": "git",
