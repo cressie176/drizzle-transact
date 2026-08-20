@@ -1,6 +1,14 @@
 const { describe, it, before, after, beforeEach } = require('node:test');
 const { equal: eq } = require('node:assert');
-const { connect, createTables, truncateTables, dropTables, close, getDb, widgets } = require('./lib/database/init-database');
+const {
+  connect,
+  createTables,
+  truncateTables,
+  dropTables,
+  close,
+  getDb,
+  widgets,
+} = require('./lib/database/init-database');
 const { createTransact, Propagation, IsolationLevel } = require('../lib');
 
 describe('IsolationLevel', () => {
@@ -20,9 +28,12 @@ describe('IsolationLevel', () => {
 
   it('ReadCommitted isolation level is accepted and can perform inserts', async () => {
     const { transact } = createTransact(getDb());
-    await transact(async (tx) => {
-      await tx.insert(widgets).values({ name: 'widget-1' });
-    }, { isolationLevel: IsolationLevel.ReadCommitted });
+    await transact(
+      async (tx) => {
+        await tx.insert(widgets).values({ name: 'widget-1' });
+      },
+      { isolationLevel: IsolationLevel.ReadCommitted },
+    );
 
     const rows = await getDb().select().from(widgets);
     eq(rows.length, 1);
@@ -31,9 +42,12 @@ describe('IsolationLevel', () => {
 
   it('Serializable isolation level is accepted and can perform inserts', async () => {
     const { transact } = createTransact(getDb());
-    await transact(async (tx) => {
-      await tx.insert(widgets).values({ name: 'widget-1' });
-    }, { isolationLevel: IsolationLevel.Serializable });
+    await transact(
+      async (tx) => {
+        await tx.insert(widgets).values({ name: 'widget-1' });
+      },
+      { isolationLevel: IsolationLevel.Serializable },
+    );
 
     const rows = await getDb().select().from(widgets);
     eq(rows.length, 1);
@@ -53,9 +67,12 @@ describe('IsolationLevel', () => {
 
   it('per-call isolation level overrides the default', async () => {
     const { transact } = createTransact(getDb(), { isolationLevel: IsolationLevel.Serializable });
-    await transact(async (tx) => {
-      await tx.insert(widgets).values({ name: 'widget-1' });
-    }, { isolationLevel: IsolationLevel.ReadCommitted });
+    await transact(
+      async (tx) => {
+        await tx.insert(widgets).values({ name: 'widget-1' });
+      },
+      { isolationLevel: IsolationLevel.ReadCommitted },
+    );
 
     const rows = await getDb().select().from(widgets);
     eq(rows.length, 1);
@@ -69,9 +86,12 @@ describe('IsolationLevel', () => {
 
     await transact(async (tx) => {
       outerTx = tx;
-      await transact(async (tx) => {
-        innerTx = tx;
-      }, { isolationLevel: IsolationLevel.Serializable });
+      await transact(
+        async (tx) => {
+          innerTx = tx;
+        },
+        { isolationLevel: IsolationLevel.Serializable },
+      );
     });
 
     eq(innerTx, outerTx);

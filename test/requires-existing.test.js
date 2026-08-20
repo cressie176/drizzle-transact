@@ -1,6 +1,14 @@
 const { describe, it, before, after, beforeEach } = require('node:test');
 const { equal: eq, rejects } = require('node:assert');
-const { connect, createTables, truncateTables, dropTables, close, getDb, widgets } = require('./lib/database/init-database');
+const {
+  connect,
+  createTables,
+  truncateTables,
+  dropTables,
+  close,
+  getDb,
+  widgets,
+} = require('./lib/database/init-database');
 const { createTransact, Propagation } = require('../lib');
 
 describe('Propagation.RequiresExisting', () => {
@@ -31,18 +39,24 @@ describe('Propagation.RequiresExisting', () => {
   it('joins the existing transaction when one is active', async () => {
     let innerTx;
     await transact(async (outerTx) => {
-      await transact(async (tx) => {
-        innerTx = tx;
-      }, { propagation: Propagation.RequiresExisting });
+      await transact(
+        async (tx) => {
+          innerTx = tx;
+        },
+        { propagation: Propagation.RequiresExisting },
+      );
       eq(outerTx, innerTx);
     });
   });
 
   it('changes made within fn are visible after the outer transaction commits', async () => {
     await transact(async (tx) => {
-      await transact(async (innerTx) => {
-        await innerTx.insert(widgets).values({ name: 'committed' });
-      }, { propagation: Propagation.RequiresExisting });
+      await transact(
+        async (innerTx) => {
+          await innerTx.insert(widgets).values({ name: 'committed' });
+        },
+        { propagation: Propagation.RequiresExisting },
+      );
     });
 
     const rows = await getDb().select().from(widgets);
@@ -54,9 +68,12 @@ describe('Propagation.RequiresExisting', () => {
     await rejects(
       () =>
         transact(async (tx) => {
-          await transact(async (innerTx) => {
-            await innerTx.insert(widgets).values({ name: 'doomed' });
-          }, { propagation: Propagation.RequiresExisting });
+          await transact(
+            async (innerTx) => {
+              await innerTx.insert(widgets).values({ name: 'doomed' });
+            },
+            { propagation: Propagation.RequiresExisting },
+          );
           throw new Error('outer failure');
         }),
       /outer failure/,
@@ -74,7 +91,9 @@ describe('Propagation.RequiresExisting', () => {
   });
 
   it('works correctly when set as the default propagation in createTransact', async () => {
-    const { transact: requiresExistingTransact } = createTransact(getDb(), { propagation: Propagation.RequiresExisting });
+    const { transact: requiresExistingTransact } = createTransact(getDb(), {
+      propagation: Propagation.RequiresExisting,
+    });
 
     await rejects(
       () => requiresExistingTransact(async () => {}),

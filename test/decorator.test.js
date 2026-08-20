@@ -1,6 +1,14 @@
 const { describe, it, before, after, beforeEach } = require('node:test');
 const { equal: eq, rejects } = require('node:assert');
-const { connect, createTables, truncateTables, dropTables, close, getDb, widgets } = require('./lib/database/init-database');
+const {
+  connect,
+  createTables,
+  truncateTables,
+  dropTables,
+  close,
+  getDb,
+  widgets,
+} = require('./lib/database/init-database');
 const { createTransact, Propagation } = require('../lib');
 
 function applyDecorator(Transactional, options, method) {

@@ -1,6 +1,14 @@
 const { describe, it, before, after, beforeEach } = require('node:test');
 const { equal: eq, deepEqual: deq, rejects } = require('node:assert');
-const { connect, createTables, truncateTables, dropTables, close, getDb, widgets } = require('./lib/database/init-database');
+const {
+  connect,
+  createTables,
+  truncateTables,
+  dropTables,
+  close,
+  getDb,
+  widgets,
+} = require('./lib/database/init-database');
 const { createTransact, Propagation } = require('../lib');
 
 describe('Propagation.Required', () => {
@@ -109,9 +117,12 @@ describe('Propagation.Required', () => {
 
   it('per-call propagation overrides the default', async () => {
     const { transact: t } = createTransact(getDb(), { propagation: Propagation.Required });
-    await t(async (tx) => {
-      await tx.insert(widgets).values({ name: 'override' });
-    }, { propagation: Propagation.Required });
+    await t(
+      async (tx) => {
+        await tx.insert(widgets).values({ name: 'override' });
+      },
+      { propagation: Propagation.Required },
+    );
 
     const rows = await getDb().select().from(widgets);
     eq(rows.length, 1);

@@ -1,6 +1,14 @@
 const { describe, it, before, after, beforeEach } = require('node:test');
 const { equal: eq, rejects } = require('node:assert');
-const { connect, createTables, truncateTables, dropTables, close, getDb, widgets } = require('./lib/database/init-database');
+const {
+  connect,
+  createTables,
+  truncateTables,
+  dropTables,
+  close,
+  getDb,
+  widgets,
+} = require('./lib/database/init-database');
 const { createTransact, Propagation } = require('../lib');
 
 describe('Propagation.RequiresNew', () => {
@@ -104,9 +112,12 @@ describe('Propagation.RequiresNew', () => {
     await transact(async (outerTx) => {
       outerTxRef = outerTx;
       await transact(async () => {});
-      await transact(async (tx) => {
-        afterInnerTxRef = tx;
-      }, { propagation: Propagation.Required });
+      await transact(
+        async (tx) => {
+          afterInnerTxRef = tx;
+        },
+        { propagation: Propagation.Required },
+      );
     });
 
     eq(afterInnerTxRef, outerTxRef);
