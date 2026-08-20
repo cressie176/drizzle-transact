@@ -115,17 +115,6 @@ const [order] = await transact(async (tx) => {
 | propagation | Propagation | Propagation.Required | Controls how the transaction is started or reused |
 | isolationLevel | IsolationLevel | driver default | Sets the transaction isolation level |
 
-### Sugar functions
-
-Four shorthand functions are provided as alternatives to `transact(fn, { propagation: ... })`:
-
-| Function | Equivalent propagation | Isolation level | Commits / rolls back |
-|---|---|---|---|
-| newTransaction(fn, options?) | Propagation.RequiresNew | Supported | Always — starts an independent transaction |
-| ensureTransaction(fn, options?) | Propagation.Required | Supported | Only if it started the transaction; joins silently otherwise |
-| withTransaction(fn) | Propagation.RequiresExisting | N/A — joins existing | Never — commit and rollback are the outer transaction's responsibility |
-| nestTransaction(fn, options?) | Propagation.Nested | Supported when starting fresh; ignored when creating a savepoint | Only its own savepoint if nested; full transaction if started fresh |
-
 ## Propagation
 
 ```ts
@@ -279,6 +268,19 @@ try {
   // err is the original error thrown by deductStock
 }
 ```
+
+## Syntactic Sugar
+
+Four shorthand functions are provided as alternatives to `transact(fn, { propagation: ... })`:
+
+| Function | Equivalent propagation |
+|---|---|
+| newTransaction(fn, options?) | Propagation.RequiresNew |
+| ensureTransaction(fn, options?) | Propagation.Required |
+| withTransaction(fn) | Propagation.RequiresExisting |
+| nestTransaction(fn, options?) | Propagation.Nested |
+
+`options` accepts `isolationLevel` only — propagation is fixed by the function.
 
 ## Experimental: Decorators
 
