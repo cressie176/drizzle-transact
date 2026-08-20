@@ -34,5 +34,9 @@
   },
   "files": ["lib"],
   "keywords": ["drizzle", "drizzle-orm", "transaction", "async-local-storage", "postgresql", "typescript"],
-  "license": "MIT"
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/cressie176/drizzle-transact"
+  }
 }
