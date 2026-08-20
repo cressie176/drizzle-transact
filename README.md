@@ -112,8 +112,8 @@ const [order] = await transact(async (tx) => {
 
 | Option | Type | Default | Description |
 |---|---|---|---|
-| `propagation` | `Propagation` | `Propagation.Required` | Controls how the transaction is started or reused |
-| `isolationLevel` | `IsolationLevel` | driver default | Sets the transaction isolation level |
+| propagation | Propagation | Propagation.Required | Controls how the transaction is started or reused |
+| isolationLevel | IsolationLevel | driver default | Sets the transaction isolation level |
 
 ### Sugar functions
 
@@ -121,10 +121,10 @@ Four shorthand functions are provided as alternatives to `transact(fn, { propaga
 
 | Function | Equivalent propagation | Commits / rolls back |
 |---|---|---|
-| `newTransaction(fn)` | `Propagation.RequiresNew` | Always — starts an independent transaction |
-| `ensureTransaction(fn)` | `Propagation.Required` | Only if it started the transaction; joins silently otherwise |
-| `withTransaction(fn)` | `Propagation.RequiresExisting` | Never — commit and rollback are the outer transaction's responsibility |
-| `nestTransaction(fn)` | `Propagation.Nested` | Only its own savepoint if nested; full transaction if started fresh |
+| newTransaction(fn) | Propagation.RequiresNew | Always — starts an independent transaction |
+| ensureTransaction(fn) | Propagation.Required | Only if it started the transaction; joins silently otherwise |
+| withTransaction(fn) | Propagation.RequiresExisting | Never — commit and rollback are the outer transaction's responsibility |
+| nestTransaction(fn) | Propagation.Nested | Only its own savepoint if nested; full transaction if started fresh |
 
 ## Propagation
 
@@ -257,10 +257,10 @@ const result = await transact(async (tx) => {
 
 | Value | SQL equivalent |
 |---|---|
-| IsolationLevel.ReadUncommitted | READ UNCOMMITTED |
-| IsolationLevel.ReadCommitted | READ COMMITTED |
-| IsolationLevel.RepeatableRead | REPEATABLE READ |
-| IsolationLevel.Serializable | SERIALIZABLE |
+| ReadUncommitted | READ UNCOMMITTED |
+| ReadCommitted | READ COMMITTED |
+| RepeatableRead | REPEATABLE READ |
+| Serializable | SERIALIZABLE |
 
 Not all databases support all isolation levels. Refer to your Drizzle driver documentation.
 
