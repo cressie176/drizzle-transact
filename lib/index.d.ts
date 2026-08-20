@@ -25,13 +25,17 @@ export type TransactFn<TDb> = <TResult>(
 
 export type SugarFn<TDb> = <TResult>(fn: (tx: TDb) => Promise<TResult>) => Promise<TResult>;
 
+export interface IsolationOptions {
+  isolationLevel?: IsolationLevel;
+}
+
 export interface TransactBundle<TDb> {
   transact: TransactFn<TDb>;
   Transactional: (options?: TransactOptions) => MethodDecorator;
-  newTransaction: SugarFn<TDb>;
-  ensureTransaction: SugarFn<TDb>;
+  newTransaction: <TResult>(fn: (tx: TDb) => Promise<TResult>, options?: IsolationOptions) => Promise<TResult>;
+  ensureTransaction: <TResult>(fn: (tx: TDb) => Promise<TResult>, options?: IsolationOptions) => Promise<TResult>;
   withTransaction: SugarFn<TDb>;
-  nestTransaction: SugarFn<TDb>;
+  nestTransaction: <TResult>(fn: (tx: TDb) => Promise<TResult>, options?: IsolationOptions) => Promise<TResult>;
 }
 
 export function createTransact<TDb>(db: TDb): TransactBundle<TDb>;

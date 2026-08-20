@@ -119,12 +119,12 @@ const [order] = await transact(async (tx) => {
 
 Four shorthand functions are provided as alternatives to `transact(fn, { propagation: ... })`:
 
-| Function | Equivalent propagation | Commits / rolls back |
-|---|---|---|
-| newTransaction(fn) | Propagation.RequiresNew | Always — starts an independent transaction |
-| ensureTransaction(fn) | Propagation.Required | Only if it started the transaction; joins silently otherwise |
-| withTransaction(fn) | Propagation.RequiresExisting | Never — commit and rollback are the outer transaction's responsibility |
-| nestTransaction(fn) | Propagation.Nested | Only its own savepoint if nested; full transaction if started fresh |
+| Function | Equivalent propagation | Isolation level | Commits / rolls back |
+|---|---|---|---|
+| newTransaction(fn, options?) | Propagation.RequiresNew | Supported | Always — starts an independent transaction |
+| ensureTransaction(fn, options?) | Propagation.Required | Supported | Only if it started the transaction; joins silently otherwise |
+| withTransaction(fn) | Propagation.RequiresExisting | N/A — joins existing | Never — commit and rollback are the outer transaction's responsibility |
+| nestTransaction(fn, options?) | Propagation.Nested | Supported when starting fresh; ignored when creating a savepoint | Only its own savepoint if nested; full transaction if started fresh |
 
 ## Propagation
 
