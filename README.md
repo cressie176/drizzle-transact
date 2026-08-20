@@ -33,10 +33,10 @@ This leaks transaction concerns throughout your call stack. `drizzle-transact` e
 ## The Solution
 
 ```ts
-import { transact } from './db';
+import { ensureTransaction } from './db';
 
 async function createOrder() {
-  return transact(async (tx) => {
+  return ensureTransaction(async (tx) => {
     const [order] = await tx.insert(orders).values(...).returning();
     await createOrderItems(order.id);
     return order;
@@ -44,15 +44,15 @@ async function createOrder() {
 }
 
 async function createOrderItems(orderId: number) {
-  await transact(async (tx) => {
+  await ensureTransaction(async (tx) => {
     await tx.insert(orderItems).values(...);
   });
 }
 
-const order = await transact(() => createOrder());
+const order = await ensureTransaction(() => createOrder());
 ```
 
-No transaction object is passed between functions. When `createOrderItems` calls `transact`, it receives the same transaction already started by the outer `transact` call. If the callback throws, the transaction is rolled back. Otherwise it commits.
+No transaction object is passed between functions. When `createOrderItems` calls `ensureTransaction`, it joins the transaction already started by the outer call. If the callback throws, the transaction is rolled back. Otherwise it commits.
 
 ## Installation
 
