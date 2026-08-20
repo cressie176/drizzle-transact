@@ -286,12 +286,13 @@ Four shorthand functions are provided as alternatives to `transact(fn, { propaga
 
 > **Experimental.** The decorator API may change between minor versions.
 
-`@Transactional` is a method decorator that starts a transaction when the method is called. Inside the method, use `withTransaction` to access the active transaction.
+`@Transactional` is a method decorator that starts a transaction when the method is called. Inside the method, use `withTransaction` to access the active transaction. `Transactional` and `withTransaction` are both part of the bundle returned by `createTransact` — import them from your shared `db` module as shown in [Setup](#setup).
 
 Requires TypeScript 5.0+ with `experimentalDecorators` enabled in `tsconfig.json`, or the TC39 Stage 3 decorator proposal enabled for your toolchain.
 
 ```ts
-import { Transactional, Propagation } from 'drizzle-transact';
+import { Propagation } from 'drizzle-transact';
+import { Transactional, withTransaction } from './db'; // your shared db module
 
 class OrderService {
   @Transactional()
