@@ -99,11 +99,11 @@ Any service method called outside of a transaction will then throw, making it ea
 
 ## API
 
-### `createTransact(db, defaults?)`
+### createTransact(db, defaults?)
 
 Creates a `transact` function bound to the given Drizzle database instance. The optional `defaults` argument sets the default options for all calls to the returned `transact` function.
 
-### `transact(fn, options?)`
+### transact(fn, options?)
 
 Executes `fn` within a transaction according to the specified propagation semantics. The active transaction is passed to `fn` as its first argument. If `fn` throws, the transaction is rolled back. Otherwise it commits.
 
@@ -144,13 +144,13 @@ Propagation controls what happens when `transact()` is called and a transaction 
 
 | Value | No active transaction | Active transaction exists |
 |---|---|---|
-| `Propagation.Required` | Start new transaction | Join existing |
-| `Propagation.RequiresNew` | Start new transaction | Push new independent transaction onto internal stack |
-| `Propagation.Nested` | Start new transaction | Create a savepoint within the existing transaction |
-| `Propagation.RequiresExisting` | Throw | Join existing |
-| `Propagation.Never` | Run without a transaction | Throw |
+| Propagation.Required | Start new transaction | Join existing |
+| Propagation.RequiresNew | Start new transaction | Push new independent transaction onto internal stack |
+| Propagation.Nested | Start new transaction | Create a savepoint within the existing transaction |
+| Propagation.RequiresExisting | Throw | Join existing |
+| Propagation.Never | Run without a transaction | Throw |
 
-### `Propagation.Required` (default)
+### Propagation.Required (default)
 
 The most common propagation. Participates in any surrounding transaction, or starts one if there isn't one.
 
@@ -172,7 +172,7 @@ await transact(async () => {
 });
 ```
 
-### `Propagation.RequiresNew`
+### Propagation.RequiresNew
 
 Always starts a new independent transaction. If an outer transaction is already active, the new transaction is pushed onto an internal stack and runs independently — committing or rolling back without affecting the outer transaction. When it completes, the outer transaction resumes as the active transaction.
 
@@ -192,7 +192,7 @@ const order = await transact(async () => {
 });
 ```
 
-### `Propagation.Nested`
+### Propagation.Nested
 
 Creates a savepoint within the existing transaction. If the nested block rolls back, only changes made within that block are undone — the outer transaction continues. If no transaction is active, a new one is started.
 
@@ -214,7 +214,7 @@ const order = await transact(async () => {
 });
 ```
 
-### `Propagation.RequiresExisting`
+### Propagation.RequiresExisting
 
 Joins the active transaction or throws. Use this to assert that a function is always called within an outer transaction.
 
@@ -237,7 +237,7 @@ await transact(async () => {
 });
 ```
 
-### `Propagation.Never`
+### Propagation.Never
 
 Throws if a transaction is active. If no transaction is active, the callback runs against the database directly without starting one.
 
@@ -265,10 +265,10 @@ const result = await transact(async (tx) => {
 
 | Value | SQL equivalent |
 |---|---|
-| `IsolationLevel.ReadUncommitted` | `READ UNCOMMITTED` |
-| `IsolationLevel.ReadCommitted` | `READ COMMITTED` |
-| `IsolationLevel.RepeatableRead` | `REPEATABLE READ` |
-| `IsolationLevel.Serializable` | `SERIALIZABLE` |
+| IsolationLevel.ReadUncommitted | READ UNCOMMITTED |
+| IsolationLevel.ReadCommitted | READ COMMITTED |
+| IsolationLevel.RepeatableRead | REPEATABLE READ |
+| IsolationLevel.Serializable | SERIALIZABLE |
 
 Not all databases support all isolation levels. Refer to your Drizzle driver documentation.
 
