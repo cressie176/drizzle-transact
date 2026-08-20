@@ -54,31 +54,6 @@ describe('IsolationLevel', () => {
     eq(rows[0].name, 'widget-1');
   });
 
-  it('default isolation level from createTransact is applied when no per-call option is given', async () => {
-    const { transact } = createTransact(getDb(), { isolationLevel: IsolationLevel.Serializable });
-    await transact(async (tx) => {
-      await tx.insert(widgets).values({ name: 'widget-1' });
-    });
-
-    const rows = await getDb().select().from(widgets);
-    eq(rows.length, 1);
-    eq(rows[0].name, 'widget-1');
-  });
-
-  it('per-call isolation level overrides the default', async () => {
-    const { transact } = createTransact(getDb(), { isolationLevel: IsolationLevel.Serializable });
-    await transact(
-      async (tx) => {
-        await tx.insert(widgets).values({ name: 'widget-1' });
-      },
-      { isolationLevel: IsolationLevel.ReadCommitted },
-    );
-
-    const rows = await getDb().select().from(widgets);
-    eq(rows.length, 1);
-    eq(rows[0].name, 'widget-1');
-  });
-
   it('isolation level is not applied when joining an existing transaction', async () => {
     const { transact } = createTransact(getDb());
     let outerTx;

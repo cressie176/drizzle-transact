@@ -9,15 +9,16 @@ const {
   getDb,
   widgets,
 } = require('./lib/database/init-database');
-const { createTransact, Propagation } = require('../lib');
+const { createTransact } = require('../lib');
 
 describe('Propagation.RequiresNew', () => {
-  let transact;
+  let newTransaction;
+  let ensureTransaction;
 
   before(async () => {
     await connect();
     await createTables();
-    ({ transact } = createTransact(getDb(), { propagation: Propagation.RequiresNew }));
+    ({ newTransaction, ensureTransaction } = createTransact(getDb()));
   });
 
   after(async () => {
@@ -30,7 +31,7 @@ describe('Propagation.RequiresNew', () => {
   });
 
   it('starts a new transaction when none is active', async () => {
-    await transact(async (tx) => {
+    await newTransaction(async (tx) => {
       await tx.insert(widgets).values({ name: 'widget-1' });
     });
 
@@ -43,9 +44,9 @@ describe('Propagation.RequiresNew', () => {
     let outerTxRef;
     let innerTxRef;
 
-    await transact(async (outerTx) => {
+    await newTransaction(async (outerTx) => {
       outerTxRef = outerTx;
-      await transact(async (innerTx) => {
+      await newTransaction(async (innerTx) => {
         innerTxRef = innerTx;
       });
     });
@@ -56,8 +57,8 @@ describe('Propagation.RequiresNew', () => {
   it('inner transaction commits independently — changes visible even if outer rolls back', async () => {
     await rejects(
       () =>
-        transact(async (outerTx) => {
-          await transact(async (innerTx) => {
+        newTransaction(async (outerTx) => {
+          await newTransaction(async (innerTx) => {
             await innerTx.insert(widgets).values({ name: 'inner-committed' });
           });
           throw new Error('outer rollback');
@@ -73,8 +74,8 @@ describe('Propagation.RequiresNew', () => {
   it('inner transaction rolls back independently — changes not visible even if outer commits', async () => {
     await rejects(
       () =>
-        transact(async () => {
-          await transact(async (innerTx) => {
+        newTransaction(async () => {
+          await newTransaction(async (innerTx) => {
             await innerTx.insert(widgets).values({ name: 'inner-doomed' });
             throw new Error('inner rollback');
           });
@@ -87,12 +88,12 @@ describe('Propagation.RequiresNew', () => {
   });
 
   it('outer transaction is unaffected by inner transaction outcome', async () => {
-    await transact(async (outerTx) => {
+    await newTransaction(async (outerTx) => {
       await outerTx.insert(widgets).values({ name: 'outer-committed' });
 
       await rejects(
         () =>
-          transact(async (innerTx) => {
+          newTransaction(async (innerTx) => {
             await innerTx.insert(widgets).values({ name: 'inner-doomed' });
             throw new Error('inner rollback');
           }),
@@ -109,22 +110,19 @@ describe('Propagation.RequiresNew', () => {
     let outerTxRef;
     let afterInnerTxRef;
 
-    await transact(async (outerTx) => {
+    await newTransaction(async (outerTx) => {
       outerTxRef = outerTx;
-      await transact(async () => {});
-      await transact(
-        async (tx) => {
-          afterInnerTxRef = tx;
-        },
-        { propagation: Propagation.Required },
-      );
+      await newTransaction(async () => {});
+      await ensureTransaction(async (tx) => {
+        afterInnerTxRef = tx;
+      });
     });
 
     eq(afterInnerTxRef, outerTxRef);
   });
 
   it('returns the value from fn', async () => {
-    const result = await transact(async () => 42);
+    const result = await newTransaction(async () => 42);
     eq(result, 42);
   });
 });

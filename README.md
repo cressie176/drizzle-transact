@@ -64,44 +64,35 @@ npm install drizzle-transact
 
 ## Setup
 
-Call `createTransact` with your Drizzle database instance and export the result. Other modules import `transact` from this shared module.
+Call `createTransact` with your Drizzle database instance and export what you need. Other modules import from this shared module.
 
 ```ts
 // db.ts
 import { drizzle } from 'drizzle-orm/node-postgres';
-import { createTransact, Propagation } from 'drizzle-transact';
+import { createTransact } from 'drizzle-transact';
 
 const db = drizzle(pool);
 
-export const transact = createTransact(db);
+export const { transact, newTransaction, ensureTransaction, withTransaction, nestTransaction, Transactional } = createTransact(db);
 ```
 
 ```ts
 // order-service.ts
-import { transact } from './db';
+import { ensureTransaction } from './db';
 
 async function createOrder() {
-  return transact(async (tx) => {
+  return ensureTransaction(async (tx) => {
     const [order] = await tx.insert(orders).values(...).returning();
     return order;
   });
 }
 ```
 
-The second argument to `createTransact` sets the default options for all `transact` calls. For example, if you want every call to require an existing transaction — enforcing that a middleware or service facade is always responsible for starting one — set the default propagation to `Propagation.RequiresExisting`:
-
-```ts
-// db.ts
-export const transact = createTransact(db, { propagation: Propagation.RequiresExisting });
-```
-
-Any service method called outside of a transaction will then throw, making it easy to catch missing transaction boundaries early.
-
 ## API
 
-### createTransact(db, defaults?)
+### createTransact(db)
 
-Creates a `transact` function bound to the given Drizzle database instance. The optional `defaults` argument sets the default options for all calls to the returned `transact` function.
+Creates a transaction bundle bound to the given Drizzle database instance.
 
 ### transact(fn, options?)
 
@@ -117,22 +108,23 @@ const [order] = await transact(async (tx) => {
 });
 ```
 
-Per-call options override the defaults set in `createTransact`:
-
-```ts
-// uses the default propagation
-await transact(fn);
-
-// overrides propagation for this call only
-await transact(fn, { propagation: Propagation.Required });
-```
-
 #### Options
 
 | Option | Type | Default | Description |
 |---|---|---|---|
 | `propagation` | `Propagation` | `Propagation.Required` | Controls how the transaction is started or reused |
 | `isolationLevel` | `IsolationLevel` | driver default | Sets the transaction isolation level |
+
+### Sugar functions
+
+Four shorthand functions are provided as alternatives to `transact(fn, { propagation: ... })`:
+
+| Function | Equivalent propagation | Commits / rolls back |
+|---|---|---|
+| `newTransaction(fn)` | `Propagation.RequiresNew` | Always — starts an independent transaction |
+| `ensureTransaction(fn)` | `Propagation.Required` | Only if it started the transaction; joins silently otherwise |
+| `withTransaction(fn)` | `Propagation.RequiresExisting` | Never — commit and rollback are the outer transaction's responsibility |
+| `nestTransaction(fn)` | `Propagation.Nested` | Only its own savepoint if nested; full transaction if started fresh |
 
 ## Propagation
 
@@ -292,7 +284,7 @@ try {
 
 > **Experimental.** The decorator API may change between minor versions.
 
-`@Transactional` is a method decorator that wraps the decorated method in `transact()`. It is syntactic sugar — everything it does can be done with `transact()` directly.
+`@Transactional` is a method decorator that starts a transaction when the method is called. Inside the method, use `withTransaction` to access the active transaction.
 
 Requires TypeScript 5.0+ with `experimentalDecorators` enabled in `tsconfig.json`, or the TC39 Stage 3 decorator proposal enabled for your toolchain.
 
@@ -302,20 +294,22 @@ import { Transactional, Propagation } from 'drizzle-transact';
 class OrderService {
   @Transactional()
   async createOrder() {
-    // @Transactional starts the transaction; transact() calls within this method join it
-    const [order] = await transact((tx) => tx.insert(orders).values(...).returning());
+    const [order] = await withTransaction((tx) => tx.insert(orders).values(...).returning());
     await this.auditLog({ action: 'order.created', orderId: order.id });
     return order;
   }
 
   @Transactional({ propagation: Propagation.RequiresNew })
   async auditLog(event: AuditEvent) {
-    await transact((tx) => tx.insert(auditEvents).values(event));
+    await withTransaction((tx) => tx.insert(auditEvents).values(event));
   }
 }
+
+const service = new OrderService();
+await service.createOrder();
 ```
 
-The same options accepted by `transact()` are accepted by `@Transactional()`. Default options configured via `createTransact` also apply.
+The same options accepted by `transact()` are accepted by `@Transactional()`.
 
 ## Supported Drivers
 

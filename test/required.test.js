@@ -93,12 +93,6 @@ describe('Propagation.Required', () => {
     eq(rows[0].name, 'persisted');
   });
 
-  it('uses the default propagation from createTransact', async () => {
-    const { transact: t } = createTransact(getDb(), { propagation: Propagation.Required });
-    const result = await t(async () => 'default');
-    eq(result, 'default');
-  });
-
   it('propagates the transaction implicitly — inner function does not receive tx', async () => {
     async function insertWidget(name) {
       await transact(async (tx) => {
@@ -113,18 +107,5 @@ describe('Propagation.Required', () => {
 
     const rows = await getDb().select().from(widgets);
     eq(rows.length, 2);
-  });
-
-  it('per-call propagation overrides the default', async () => {
-    const { transact: t } = createTransact(getDb(), { propagation: Propagation.Required });
-    await t(
-      async (tx) => {
-        await tx.insert(widgets).values({ name: 'override' });
-      },
-      { propagation: Propagation.Required },
-    );
-
-    const rows = await getDb().select().from(widgets);
-    eq(rows.length, 1);
   });
 });

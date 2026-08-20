@@ -23,9 +23,15 @@ export type TransactFn<TDb> = <TResult>(
   options?: TransactOptions,
 ) => Promise<TResult>;
 
+export type SugarFn<TDb> = <TResult>(fn: (tx: TDb) => Promise<TResult>) => Promise<TResult>;
+
 export interface TransactBundle<TDb> {
   transact: TransactFn<TDb>;
   Transactional: (options?: TransactOptions) => MethodDecorator;
+  newTransaction: SugarFn<TDb>;
+  ensureTransaction: SugarFn<TDb>;
+  withTransaction: SugarFn<TDb>;
+  nestTransaction: SugarFn<TDb>;
 }
 
-export function createTransact<TDb>(db: TDb, defaults?: TransactOptions): TransactBundle<TDb>;
+export function createTransact<TDb>(db: TDb): TransactBundle<TDb>;

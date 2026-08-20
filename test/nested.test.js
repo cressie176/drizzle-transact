@@ -9,15 +9,15 @@ const {
   getDb,
   widgets,
 } = require('./lib/database/init-database');
-const { createTransact, Propagation } = require('../lib');
+const { createTransact } = require('../lib');
 
 describe('Propagation.Nested', () => {
-  let transact;
+  let nestTransaction;
 
   before(async () => {
     await connect();
     await createTables();
-    ({ transact } = createTransact(getDb(), { propagation: Propagation.Nested }));
+    ({ nestTransaction } = createTransact(getDb()));
   });
 
   after(async () => {
@@ -30,7 +30,7 @@ describe('Propagation.Nested', () => {
   });
 
   it('starts a new transaction when none is active', async () => {
-    await transact(async (tx) => {
+    await nestTransaction(async (tx) => {
       await tx.insert(widgets).values({ name: 'widget-1' });
     });
 
@@ -43,9 +43,9 @@ describe('Propagation.Nested', () => {
     let outerTx;
     let innerTx;
 
-    await transact(async (tx) => {
+    await nestTransaction(async (tx) => {
       outerTx = tx;
-      await transact(async (tx2) => {
+      await nestTransaction(async (tx2) => {
         innerTx = tx2;
       });
     });
@@ -56,9 +56,9 @@ describe('Propagation.Nested', () => {
   });
 
   it('outer transaction commits when nested block also succeeds', async () => {
-    await transact(async (outerTx) => {
+    await nestTransaction(async (outerTx) => {
       await outerTx.insert(widgets).values({ name: 'outer' });
-      await transact(async (innerTx) => {
+      await nestTransaction(async (innerTx) => {
         await innerTx.insert(widgets).values({ name: 'inner' });
       });
     });
@@ -68,11 +68,11 @@ describe('Propagation.Nested', () => {
   });
 
   it('rolling back a nested block undoes only its own changes, outer transaction can still commit', async () => {
-    await transact(async (outerTx) => {
+    await nestTransaction(async (outerTx) => {
       await outerTx.insert(widgets).values({ name: 'outer' });
       await rejects(
         () =>
-          transact(async (innerTx) => {
+          nestTransaction(async (innerTx) => {
             await innerTx.insert(widgets).values({ name: 'inner' });
             throw new Error('nested failure');
           }),
@@ -88,8 +88,8 @@ describe('Propagation.Nested', () => {
   it('rethrows an error from the nested block to the caller', async () => {
     await rejects(
       () =>
-        transact(async (outerTx) => {
-          await transact(async () => {
+        nestTransaction(async (outerTx) => {
+          await nestTransaction(async () => {
             throw new Error('nested error');
           });
         }),
@@ -98,15 +98,15 @@ describe('Propagation.Nested', () => {
   });
 
   it('returns the value from fn', async () => {
-    const result = await transact(async () => 42);
+    const result = await nestTransaction(async () => 42);
     eq(result, 42);
   });
 
   it('restores the stack correctly after the nested block completes', async () => {
     let outerTxAfterNested;
 
-    await transact(async (outerTx) => {
-      await transact(async () => {});
+    await nestTransaction(async (outerTx) => {
+      await nestTransaction(async () => {});
       outerTxAfterNested = outerTx;
     });
 

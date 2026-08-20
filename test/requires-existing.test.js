@@ -9,15 +9,16 @@ const {
   getDb,
   widgets,
 } = require('./lib/database/init-database');
-const { createTransact, Propagation } = require('../lib');
+const { createTransact } = require('../lib');
 
 describe('Propagation.RequiresExisting', () => {
   let transact;
+  let withTransaction;
 
   before(async () => {
     await connect();
     await createTables();
-    ({ transact } = createTransact(getDb()));
+    ({ transact, withTransaction } = createTransact(getDb()));
   });
 
   after(async () => {
@@ -31,7 +32,7 @@ describe('Propagation.RequiresExisting', () => {
 
   it('throws when no transaction is active', async () => {
     await rejects(
-      () => transact(async () => {}, { propagation: Propagation.RequiresExisting }),
+      () => withTransaction(async () => {}),
       /Propagation\.RequiresExisting requires an active transaction/,
     );
   });
@@ -39,24 +40,18 @@ describe('Propagation.RequiresExisting', () => {
   it('joins the existing transaction when one is active', async () => {
     let innerTx;
     await transact(async (outerTx) => {
-      await transact(
-        async (tx) => {
-          innerTx = tx;
-        },
-        { propagation: Propagation.RequiresExisting },
-      );
+      await withTransaction(async (tx) => {
+        innerTx = tx;
+      });
       eq(outerTx, innerTx);
     });
   });
 
   it('changes made within fn are visible after the outer transaction commits', async () => {
-    await transact(async (tx) => {
-      await transact(
-        async (innerTx) => {
-          await innerTx.insert(widgets).values({ name: 'committed' });
-        },
-        { propagation: Propagation.RequiresExisting },
-      );
+    await transact(async () => {
+      await withTransaction(async (innerTx) => {
+        await innerTx.insert(widgets).values({ name: 'committed' });
+      });
     });
 
     const rows = await getDb().select().from(widgets);
@@ -67,13 +62,10 @@ describe('Propagation.RequiresExisting', () => {
   it('changes made within fn are rolled back if the outer transaction rolls back', async () => {
     await rejects(
       () =>
-        transact(async (tx) => {
-          await transact(
-            async (innerTx) => {
-              await innerTx.insert(widgets).values({ name: 'doomed' });
-            },
-            { propagation: Propagation.RequiresExisting },
-          );
+        transact(async () => {
+          await withTransaction(async (innerTx) => {
+            await innerTx.insert(widgets).values({ name: 'doomed' });
+          });
           throw new Error('outer failure');
         }),
       /outer failure/,
@@ -85,27 +77,8 @@ describe('Propagation.RequiresExisting', () => {
 
   it('returns the value of fn', async () => {
     const result = await transact(async () => {
-      return transact(async () => 99, { propagation: Propagation.RequiresExisting });
+      return withTransaction(async () => 99);
     });
     eq(result, 99);
-  });
-
-  it('works correctly when set as the default propagation in createTransact', async () => {
-    const { transact: requiresExistingTransact } = createTransact(getDb(), {
-      propagation: Propagation.RequiresExisting,
-    });
-
-    await rejects(
-      () => requiresExistingTransact(async () => {}),
-      /Propagation\.RequiresExisting requires an active transaction/,
-    );
-
-    let innerTx;
-    await transact(async (outerTx) => {
-      await requiresExistingTransact(async (tx) => {
-        innerTx = tx;
-      });
-      eq(outerTx, innerTx);
-    });
   });
 });

@@ -17,7 +17,7 @@ describe('Propagation.Never', () => {
   before(async () => {
     await connect();
     await createTables();
-    ({ transact } = createTransact(getDb(), { propagation: Propagation.Never }));
+    ({ transact } = createTransact(getDb()));
   });
 
   after(async () => {
@@ -30,9 +30,11 @@ describe('Propagation.Never', () => {
   });
 
   it('throws when a transaction is active', async () => {
-    const { transact: transactRequired } = createTransact(getDb(), { propagation: Propagation.Required });
     await rejects(
-      () => transactRequired(async () => transact(async () => {})),
+      () =>
+        transact(async () => {
+          await transact(async () => {}, { propagation: Propagation.Never });
+        }),
       /Propagation\.Never: an active transaction was found but none was expected/,
     );
   });
@@ -40,7 +42,7 @@ describe('Propagation.Never', () => {
   it('runs without a transaction when none is active', async () => {
     await transact(async (conn) => {
       await conn.insert(widgets).values({ name: 'widget-1' });
-    });
+    }, { propagation: Propagation.Never });
 
     const rows = await getDb().select().from(widgets);
     eq(rows.length, 1);
@@ -54,7 +56,7 @@ describe('Propagation.Never', () => {
       () =>
         transact(async () => {
           throw new Error('boom');
-        }),
+        }, { propagation: Propagation.Never }),
       /boom/,
     );
 
@@ -64,7 +66,7 @@ describe('Propagation.Never', () => {
   });
 
   it('returns the value of fn', async () => {
-    const result = await transact(async () => 42);
+    const result = await transact(async () => 42, { propagation: Propagation.Never });
     eq(result, 42);
   });
 });

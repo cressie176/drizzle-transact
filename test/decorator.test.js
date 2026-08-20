@@ -19,11 +19,12 @@ function applyDecorator(Transactional, options, method) {
 describe('@Transactional', () => {
   let transact;
   let Transactional;
+  let withTransaction;
 
   before(async () => {
     await connect();
     await createTables();
-    ({ transact, Transactional } = createTransact(getDb()));
+    ({ transact, Transactional, withTransaction } = createTransact(getDb()));
   });
 
   after(async () => {
@@ -36,8 +37,10 @@ describe('@Transactional', () => {
   });
 
   it('runs the decorated method within a transaction using the default propagation', async () => {
-    const method = applyDecorator(Transactional, undefined, async (tx) => {
-      await tx.insert(widgets).values({ name: 'decorated' });
+    const method = applyDecorator(Transactional, undefined, async () => {
+      await withTransaction(async (tx) => {
+        await tx.insert(widgets).values({ name: 'decorated' });
+      });
     });
 
     await method();
@@ -51,8 +54,10 @@ describe('@Transactional', () => {
     let outerTx;
     let innerTx;
 
-    const inner = applyDecorator(Transactional, { propagation: Propagation.RequiresNew }, async (tx) => {
-      innerTx = tx;
+    const inner = applyDecorator(Transactional, { propagation: Propagation.RequiresNew }, async () => {
+      await withTransaction(async (tx) => {
+        innerTx = tx;
+      });
     });
 
     await transact(async (tx) => {
@@ -70,8 +75,10 @@ describe('@Transactional', () => {
   });
 
   it('rolls back changes and rethrows when the decorated method throws', async () => {
-    const method = applyDecorator(Transactional, undefined, async (tx) => {
-      await tx.insert(widgets).values({ name: 'doomed' });
+    const method = applyDecorator(Transactional, undefined, async () => {
+      await withTransaction(async (tx) => {
+        await tx.insert(widgets).values({ name: 'doomed' });
+      });
       throw new Error('boom');
     });
 
@@ -101,19 +108,16 @@ describe('@Transactional', () => {
     eq(result, 'ctx-test');
   });
 
-  it('joins the transaction started by the decorator when calling transact internally', async () => {
-    let decoratorTx;
-    let innerTx;
+  it('multiple withTransaction calls within the decorated method share the same transaction', async () => {
+    const seen = [];
 
-    const method = applyDecorator(Transactional, undefined, async (tx) => {
-      decoratorTx = tx;
-      await transact(async (t) => {
-        innerTx = t;
-      });
+    const method = applyDecorator(Transactional, undefined, async () => {
+      await withTransaction(async (tx) => { seen.push(tx); });
+      await withTransaction(async (tx) => { seen.push(tx); });
     });
 
     await method();
 
-    eq(decoratorTx, innerTx);
+    eq(seen[0], seen[1]);
   });
 });
