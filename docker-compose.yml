@@ -1,0 +1,14 @@
+services:
+  postgres:
+    image: postgres:16
+    environment:
+      POSTGRES_USER: drizzle_transact
+      POSTGRES_PASSWORD: drizzle_transact
+      POSTGRES_DB: drizzle_transact
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U drizzle_transact"]
+      interval: 5s
+      timeout: 5s
+      retries: 5

@@ -1,5 +1,11 @@
 # drizzle-transact
 
+[![NPM Version](https://img.shields.io/npm/v/drizzle-transact)](https://www.npmjs.com/package/drizzle-transact)
+[![CI](https://github.com/cressie176/drizzle-transact/actions/workflows/qa.yml/badge.svg)](https://github.com/cressie176/drizzle-transact/actions/workflows/qa.yml)
+[![Coverage](https://codecov.io/gh/cressie176/drizzle-transact/branch/main/graph/badge.svg)](https://codecov.io/gh/cressie176/drizzle-transact)
+[![Node.js](https://img.shields.io/node/v/drizzle-transact)](https://nodejs.org)
+[![License](https://img.shields.io/npm/l/drizzle-transact)](LICENSE)
+
 Transaction management for [Drizzle ORM](https://orm.drizzle.team/) with propagation semantics and implicit transaction passing via `AsyncLocalStorage`.
 
 ## The Problem

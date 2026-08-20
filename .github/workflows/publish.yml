@@ -1,0 +1,45 @@
+name: Publish
+
+on:
+  release:
+    types: [published]
+
+jobs:
+  publish:
+    name: Publish to npm
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: drizzle_transact
+          POSTGRES_PASSWORD: drizzle_transact
+          POSTGRES_DB: drizzle_transact
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+          registry-url: https://registry.npmjs.org
+      - run: npm ci
+      - run: npx biome ci .
+      - run: npm test
+        env:
+          PGHOST: localhost
+          PGPORT: 5432
+          PGUSER: drizzle_transact
+          PGPASSWORD: drizzle_transact
+          PGDATABASE: drizzle_transact
+      - run: npm publish --provenance --access public
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
