@@ -112,8 +112,12 @@ describe('@Transactional', () => {
     const seen = [];
 
     const method = applyDecorator(Transactional, undefined, async () => {
-      await withTransaction(async (tx) => { seen.push(tx); });
-      await withTransaction(async (tx) => { seen.push(tx); });
+      await withTransaction(async (tx) => {
+        seen.push(tx);
+      });
+      await withTransaction(async (tx) => {
+        seen.push(tx);
+      });
     });
 
     await method();
