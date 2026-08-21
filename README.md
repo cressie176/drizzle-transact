@@ -110,6 +110,13 @@ const [order] = await transact(async (tx) => {
 });
 ```
 
+#### Options
+
+| Option         | Type           | Default              | Description                                       |
+|----------------|----------------|----------------------|---------------------------------------------------|
+| propagation    | Propagation    | Propagation.Required | Controls how the transaction is started or reused |
+| isolationLevel | IsolationLevel | driver default       | Sets the transaction isolation level              |
+
 #### Syntactic Sugar
 
 Five shorthand functions are provided as alternatives to `transact(fn, { propagation: ... })`:
@@ -122,15 +129,6 @@ Five shorthand functions are provided as alternatives to `transact(fn, { propaga
 | nestTransaction(fn, options?)   | Propagation.Nested           |
 | withoutTransaction(fn)          | Propagation.Never            |
 
-`options` accepts `isolationLevel` only — propagation is fixed by the function.
-
-#### Options
-
-| Option | Type | Default | Description |
-|---|---|---|---|
-| propagation | Propagation | Propagation.Required | Controls how the transaction is started or reused |
-| isolationLevel | IsolationLevel | driver default | Sets the transaction isolation level |
-
 ## Propagation
 
 ```ts
@@ -139,33 +137,33 @@ import { Propagation } from 'drizzle-transact';
 
 Propagation controls what happens when `transact()` is called and a transaction may or may not already be active.
 
-| Value | No active transaction | Active transaction exists |
-|---|---|---|
-| Propagation.Required | Start new transaction | Join existing |
-| Propagation.RequiresNew | Start new transaction | Push new independent transaction onto internal stack |
-| Propagation.Nested | Start new transaction | Create a savepoint within the existing transaction |
-| Propagation.RequiresExisting | Throw | Join existing |
-| Propagation.Never | Run without a transaction | Throw |
+| Value                        | No active transaction     | Active transaction exists                            |
+|------------------------------|---------------------------|------------------------------------------------------|
+| Propagation.Required         | Start new transaction     | Join existing                                        |
+| Propagation.RequiresNew      | Start new transaction     | Push new independent transaction onto internal stack |
+| Propagation.Nested           | Start new transaction     | Create a savepoint within the existing transaction   |
+| Propagation.RequiresExisting | Throw                     | Join existing                                        |
+| Propagation.Never            | Run without a transaction | Throw                                                |
 
 ### Propagation.Required (default)
 
 The most common propagation. Participates in any surrounding transaction, or starts one if there isn't one.
 
 ```ts
-// called standalone — starts a new transaction
+// saveUser called standalone — starts a new transaction
 const alice = await saveUser({ name: 'Alice' });
 
-// called within an outer transaction — joins it
+// saveUser called within an outer transaction — joins it
 await transact(async () => {
   const alice = await saveUser({ name: 'Alice' });
   const bob = await saveUser({ name: 'Bob' });
-});
+}, { propagation: Propagation.Required });
 
 async function saveUser(user: User) {
   return transact(async (tx) => {
     const [saved] = await tx.insert(users).values(user).returning();
     return saved;
-  });
+  }, { propagation: Propagation.Required });
 }
 ```
 
@@ -252,7 +250,7 @@ async function readConfig() {
 import { IsolationLevel } from 'drizzle-transact';
 ```
 
-The `isolationLevel` option is passed to the underlying Drizzle transaction. Supported values depend on your database driver.
+The `isolationLevel` option is passed to the underlying Drizzle transaction. It is only applied when a new transaction is started. If `isolationLevel` is specified but has no effect, it is silently ignored — no error is thrown.
 
 ```ts
 const result = await transact(async (tx) => {
