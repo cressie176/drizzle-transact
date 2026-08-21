@@ -33,12 +33,12 @@ This leaks transaction concerns throughout your call stack. `drizzle-transact` e
 ## The Solution
 
 ```ts
-import { ensureTransaction } from './db';
+import { newTransaction, withTransaction } from './db';
 
-const order = await ensureTransaction(() => createOrder());
+const order = await newTransaction(() => createOrder());
 
 async function createOrder() {
-  return ensureTransaction(async (tx) => {
+  return withTransaction(async (tx) => {
     const [order] = await tx.insert(orders).values(...).returning();
     await createOrderItems(order.id);
     return order;
@@ -46,13 +46,13 @@ async function createOrder() {
 }
 
 async function createOrderItems(orderId: number) {
-  await ensureTransaction(async (tx) => {
+  await withTransaction(async (tx) => {
     await tx.insert(orderItems).values(...);
   });
 }
 ```
 
-No transaction object is passed between functions. When `createOrderItems` calls `ensureTransaction`, it joins the transaction already started by the outer call. If the callback throws, the transaction is rolled back. Otherwise it commits.
+No transaction object is passed between functions. When `createOrderItems` calls `withTransaction`, it joins the transaction already started by the outer call. If the callback throws, the transaction is rolled back. Otherwise it commits.
 
 ## Installation
 
@@ -73,15 +73,17 @@ import { createTransact } from 'drizzle-transact';
 
 const db = drizzle(pool);
 
-export const { transact, newTransaction, ensureTransaction, withTransaction, nestTransaction, Transactional } = createTransact(db);
+export const { transact, newTransaction, ensureTransaction, withTransaction, nestTransaction, withoutTransaction } = createTransact(db);
 ```
 
 ```ts
 // order-service.ts
-import { ensureTransaction } from './db';
+import { newTransaction, withTransaction } from './db';
+
+const order = await newTransaction(() => createOrder());
 
 async function createOrder() {
-  return ensureTransaction(async (tx) => {
+  return withTransaction(async (tx) => {
     const [order] = await tx.insert(orders).values(...).returning();
     return order;
   });
@@ -107,6 +109,20 @@ const [order] = await transact(async (tx) => {
   return tx.insert(orders).values(...).returning();
 });
 ```
+
+#### Syntactic Sugar
+
+Five shorthand functions are provided as alternatives to `transact(fn, { propagation: ... })`:
+
+| Function                        | Equivalent propagation       |
+|---------------------------------|------------------------------|
+| newTransaction(fn, options?)    | Propagation.RequiresNew      |
+| ensureTransaction(fn, options?) | Propagation.Required         |
+| withTransaction(fn)             | Propagation.RequiresExisting |
+| nestTransaction(fn, options?)   | Propagation.Nested           |
+| withoutTransaction(fn)          | Propagation.Never            |
+
+`options` accepts `isolationLevel` only — propagation is fixed by the function.
 
 #### Options
 
@@ -136,13 +152,6 @@ Propagation controls what happens when `transact()` is called and a transaction 
 The most common propagation. Participates in any surrounding transaction, or starts one if there isn't one.
 
 ```ts
-async function saveUser(user: User) {
-  return transact(async (tx) => {
-    const [saved] = await tx.insert(users).values(user).returning();
-    return saved;
-  });
-}
-
 // called standalone — starts a new transaction
 const alice = await saveUser({ name: 'Alice' });
 
@@ -151,6 +160,13 @@ await transact(async () => {
   const alice = await saveUser({ name: 'Alice' });
   const bob = await saveUser({ name: 'Bob' });
 });
+
+async function saveUser(user: User) {
+  return transact(async (tx) => {
+    const [saved] = await tx.insert(users).values(user).returning();
+    return saved;
+  });
+}
 ```
 
 ### Propagation.RequiresNew
@@ -160,17 +176,17 @@ Always starts a new independent transaction. If an outer transaction is already 
 Useful for operations that must succeed or fail on their own, such as audit logging.
 
 ```ts
-async function auditLog(event: AuditEvent) {
-  await transact(async (tx) => {
-    await tx.insert(auditEvents).values(event);
-  }, { propagation: Propagation.RequiresNew });
-}
-
 const order = await transact(async () => {
   const order = await createOrder();
   await auditLog({ action: 'order.created', orderId: order.id }); // commits independently
   return order;
 });
+
+async function auditLog(event: AuditEvent) {
+  await transact(async (tx) => {
+    await tx.insert(auditEvents).values(event);
+  }, { propagation: Propagation.RequiresNew });
+}
 ```
 
 ### Propagation.Nested
@@ -200,14 +216,6 @@ const order = await transact(async () => {
 Joins the active transaction or throws. Use this to assert that a function is always called within an outer transaction.
 
 ```ts
-async function deductStock(productId: number, qty: number) {
-  await transact(async (tx) => {
-    await tx.update(products)
-      .set({ stock: sql`stock - ${qty}` })
-      .where(eq(products.id, productId));
-  }, { propagation: Propagation.RequiresExisting });
-}
-
 // throws — no active transaction
 await deductStock(1, 5);
 
@@ -216,6 +224,14 @@ await transact(async () => {
   const order = await createOrder();
   await deductStock(order.productId, order.qty);
 });
+
+async function deductStock(productId: number, qty: number) {
+  await transact(async (tx) => {
+    await tx.update(products)
+      .set({ stock: sql`stock - ${qty}` })
+      .where(eq(products.id, productId));
+  }, { propagation: Propagation.RequiresExisting });
+}
 ```
 
 ### Propagation.Never
@@ -244,12 +260,12 @@ const result = await transact(async (tx) => {
 }, { isolationLevel: IsolationLevel.Serializable });
 ```
 
-| Value | SQL equivalent |
-|---|---|
+| Value           | SQL equivalent   |
+|-----------------|------------------|
 | ReadUncommitted | READ UNCOMMITTED |
-| ReadCommitted | READ COMMITTED |
-| RepeatableRead | REPEATABLE READ |
-| Serializable | SERIALIZABLE |
+| ReadCommitted   | READ COMMITTED   |
+| RepeatableRead  | REPEATABLE READ  |
+| Serializable    | SERIALIZABLE     |
 
 Not all databases support all isolation levels. Refer to your Drizzle driver documentation.
 
@@ -269,62 +285,11 @@ try {
 }
 ```
 
-## Syntactic Sugar
-
-Four shorthand functions are provided as alternatives to `transact(fn, { propagation: ... })`:
-
-| Function | Equivalent propagation |
-|---|---|
-| newTransaction(fn, options?) | Propagation.RequiresNew |
-| ensureTransaction(fn, options?) | Propagation.Required |
-| withTransaction(fn) | Propagation.RequiresExisting |
-| nestTransaction(fn, options?) | Propagation.Nested |
-
-`options` accepts `isolationLevel` only — propagation is fixed by the function.
-
-## Experimental: Decorators
-
-> **Experimental.** The decorator API may change between minor versions.
-
-`@Transactional` is a method decorator that starts a transaction when the method is called. Inside the method, use `withTransaction` to access the active transaction. `Transactional` and `withTransaction` are both part of the bundle returned by `createTransact` — import them from your shared `db` module as shown in [Setup](#setup).
-
-Requires TypeScript 5.0+ with `experimentalDecorators` enabled in `tsconfig.json`, or the TC39 Stage 3 decorator proposal enabled for your toolchain.
-
-```ts
-import { Propagation } from 'drizzle-transact';
-import { Transactional, withTransaction } from './db'; // your shared db module
-
-class OrderService {
-  @Transactional()
-  async createOrder() {
-    const [order] = await withTransaction((tx) => tx.insert(orders).values(...).returning());
-    await this.auditLog({ action: 'order.created', orderId: order.id });
-    return order;
-  }
-
-  @Transactional({ propagation: Propagation.RequiresNew })
-  async auditLog(event: AuditEvent) {
-    await withTransaction((tx) => tx.insert(auditEvents).values(event));
-  }
-}
-
-const service = new OrderService();
-await service.createOrder();
-```
-
-The same options accepted by `transact()` are accepted by `@Transactional()`.
-
 ## Supported Drivers
 
-`drizzle-transact` is designed to work with all Drizzle ORM database drivers:
-
-- `drizzle-orm/node-postgres`
-- `drizzle-orm/postgres-js`
-- `drizzle-orm/mysql2`
-- `drizzle-orm/better-sqlite3`
-- `drizzle-orm/libsql`
+`drizzle-transact` is designed to work with all Drizzle ORM database drivers
 
 ## Requirements
 
-- Node.js 16+
+- Node.js 22+
 - Drizzle ORM

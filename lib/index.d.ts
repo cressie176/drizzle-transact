@@ -31,11 +31,11 @@ export interface IsolationOptions {
 
 export interface TransactBundle<TDb> {
   transact: TransactFn<TDb>;
-  Transactional: (options?: TransactOptions) => MethodDecorator;
   newTransaction: <TResult>(fn: (tx: TDb) => Promise<TResult>, options?: IsolationOptions) => Promise<TResult>;
   ensureTransaction: <TResult>(fn: (tx: TDb) => Promise<TResult>, options?: IsolationOptions) => Promise<TResult>;
   withTransaction: SugarFn<TDb>;
   nestTransaction: <TResult>(fn: (tx: TDb) => Promise<TResult>, options?: IsolationOptions) => Promise<TResult>;
+  withoutTransaction: SugarFn<TDb>;
 }
 
 export function createTransact<TDb>(db: TDb): TransactBundle<TDb>;
