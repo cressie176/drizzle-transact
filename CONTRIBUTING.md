@@ -18,13 +18,13 @@ Before working on an improvement, consider creating an issue for it. It may be s
 
 The average function in this codebase should be only a few lines long. If you need to write a comment to explain what a block of code inside a function does, extract that block into its own named function instead.
 
-### Else Considered Harmful
+### Else Considered Harmful (Mostly)
 
-Guard conditions — an `if` near the top of a function that returns immediately or throws — are fine. But try very hard to avoid `else` or `switch`. They typically hide a fork in behaviour that is better handled with polymorphism or named functions.
+Guard conditions — an `if` near the top of a function that returns immediately or throws — are fine. Avoid `else` and `switch` as a rule: they typically hide a fork in behaviour that is better handled with polymorphism or named functions. But don't contort the code to obey — a trivial two-way fork, or an exceptional case where the alternatives are genuinely worse, may keep its `else`.
 
-### Booleans Make Bad Parameters
+### Booleans Make Bad Parameters (Usually)
 
-Passing booleans as parameters leads to `else` statements. `else` statements are bad. Use polymorphism instead.
+Passing booleans as parameters tends to produce `else` statements and call sites like `doThing(true)` that mean nothing without the signature. Prefer polymorphism, an enum, or an options object with a named property. As with `else`, a trivial or exceptional case may pass a boolean when the alternatives are more convoluted.
 
 ### Avoid Inheritance
 

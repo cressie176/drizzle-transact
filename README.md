@@ -71,7 +71,7 @@ Call `createTransact` with your Drizzle database instance and export what you ne
 import { drizzle } from 'drizzle-orm/node-postgres';
 import { createTransact } from 'drizzle-transact';
 
-const db = drizzle(pool);
+const db = drizzle({ client: pool });
 
 export const { transact, newTransaction, ensureTransaction, withTransaction, nestTransaction, withoutTransaction } = createTransact(db);
 ```

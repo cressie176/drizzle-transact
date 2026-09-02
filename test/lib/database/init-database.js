@@ -18,7 +18,7 @@ async function connect() {
     password: process.env.PGPASSWORD ?? 'drizzle_transact',
     database: process.env.PGDATABASE ?? 'drizzle_transact',
   });
-  db = drizzle(pool);
+  db = drizzle({ client: pool });
   return db;
 }
 
