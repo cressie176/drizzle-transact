@@ -1,6 +1,6 @@
 {
   "name": "drizzle-transact",
-  "version": "1.0.4",
+  "version": "1.1.0",
   "description": "Transaction management for Drizzle ORM using AsyncLocalStorage",
   "main": "./lib/index.js",
   "types": "./lib/index.d.ts",
