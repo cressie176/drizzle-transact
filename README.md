@@ -129,6 +129,14 @@ Five shorthand functions are provided as alternatives to `transact(fn, { propaga
 | nestTransaction(fn, options?)   | Propagation.Nested           |
 | withoutTransaction(fn)          | Propagation.Never            |
 
+### adoptTransaction(tx, fn)
+
+Makes an externally established transaction the active transaction for the duration of `fn`, preserving full transactional semantics. See [Adopting External Transactions](#adopting-external-transactions).
+
+### adoptDatabase(db, fn)
+
+Makes an externally supplied database handle the active transaction for the duration of `fn`, and routes `newTransaction` and `nestTransaction` through it as well. See [Adopting External Transactions](#adopting-external-transactions).
+
 ## Propagation
 
 ```ts
@@ -266,6 +274,36 @@ const result = await transact(async (tx) => {
 | Serializable    | SERIALIZABLE     |
 
 Not all databases support all isolation levels. Refer to your Drizzle driver documentation.
+
+## Adopting External Transactions
+
+drizzle-transact only sees transactions it starts itself. If a transaction was opened elsewhere — directly through `db.transaction`, or by a tool that supplies its own database handle — functions using `transact` or the sugar functions will not join it. Worse, `Propagation.Required` starts a separate transaction on a different connection, which can deadlock against the outer one.
+
+`adoptTransaction` makes an externally supplied handle the active transaction for the duration of a callback:
+
+```ts
+import { adoptTransaction } from 'drizzle-transact';
+
+await db.transaction(async (tx) => {
+  await adoptTransaction(tx, async () => {
+    await createOrder(); // Propagation.Required joins tx
+  });
+});
+```
+
+Within an adopted transaction, full transactional semantics are preserved: `Propagation.RequiresNew` still opens an independent transaction on the database the bundle is bound to, and `Propagation.Nested` still creates a savepoint on the adopted transaction.
+
+Those semantics are wrong for tools that inject their own database and provide isolation themselves. For example, [drizzle-explain](https://github.com/cressie176/drizzle-explain) runs a callback against an instrumented database built on `drizzle-orm/pg-proxy` — a driver that cannot open transactions at all — inside a sandbox transaction it always rolls back. Under `adoptTransaction`, `Propagation.Nested` would throw, and `Propagation.RequiresNew` would escape the sandbox — running unmeasured statements on the real database and committing them permanently. `adoptDatabase` exists for exactly this case: it makes the supplied handle the active transaction *and* routes `Propagation.RequiresNew` and `Propagation.Nested` through it, without attempting to open transactions on it:
+
+```ts
+import { adoptDatabase } from 'drizzle-transact';
+
+const analysis = await explain((edb) => adoptDatabase(edb, () => findReservationsByRoom(roomId)));
+```
+
+Every statement issued by your persistence functions — including those inside `newTransaction` and `nestTransaction` blocks — runs against `edb`, is captured for analysis, and is rolled back with the sandbox.
+
+Choose by who owns isolation: `adoptDatabase` is for scopes where the environment already provides it (a test sandbox, a tool like drizzle-explain), so transaction-opening propagations run flat against the adopted handle and no statement escapes the scope. If you need real transactional semantics inside the scope — independent commits, savepoints — that is `adoptTransaction`. In particular, adopting a plain live database with `adoptDatabase` means `newTransaction` blocks run raw and unatomic; that is almost never what you want outside a sandbox.
 
 ## Error Handling
 

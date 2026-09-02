@@ -39,3 +39,7 @@ export interface TransactBundle<TDb> {
 }
 
 export function createTransact<TDb>(db: TDb): TransactBundle<TDb>;
+
+export function adoptTransaction<TDb, TResult>(tx: TDb, fn: (tx: TDb) => Promise<TResult>): Promise<TResult>;
+
+export function adoptDatabase<TDb, TResult>(db: TDb, fn: (db: TDb) => Promise<TResult>): Promise<TResult>;
