@@ -3,6 +3,7 @@ export enum Propagation {
   RequiresNew = 'RequiresNew',
   Nested = 'Nested',
   RequiresExisting = 'RequiresExisting',
+  Supports = 'Supports',
   Never = 'Never',
 }
 
@@ -36,6 +37,7 @@ export interface TransactBundle<TDb> {
   withTransaction: SugarFn<TDb>;
   nestTransaction: <TResult>(fn: (tx: TDb) => Promise<TResult>, options?: IsolationOptions) => Promise<TResult>;
   withoutTransaction: SugarFn<TDb>;
+  supportsTransaction: SugarFn<TDb>;
 }
 
 export function createTransact<TDb>(db: TDb): TransactBundle<TDb>;

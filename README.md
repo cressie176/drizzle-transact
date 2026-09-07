@@ -73,7 +73,7 @@ import { createTransact } from 'drizzle-transact';
 
 const db = drizzle({ client: pool });
 
-export const { transact, newTransaction, ensureTransaction, withTransaction, nestTransaction, withoutTransaction } = createTransact(db);
+export const { transact, newTransaction, ensureTransaction, withTransaction, nestTransaction, withoutTransaction, supportsTransaction } = createTransact(db);
 ```
 
 ```ts
@@ -119,15 +119,16 @@ const [order] = await transact(async (tx) => {
 
 #### Syntactic Sugar
 
-Five shorthand functions are provided as alternatives to `transact(fn, { propagation: ... })`:
+Six shorthand functions are provided as alternatives to `transact(fn, { propagation: ... })`:
 
-| Function                        | Equivalent propagation       |
-|---------------------------------|------------------------------|
-| newTransaction(fn, options?)    | Propagation.RequiresNew      |
-| ensureTransaction(fn, options?) | Propagation.Required         |
-| withTransaction(fn)             | Propagation.RequiresExisting |
-| nestTransaction(fn, options?)   | Propagation.Nested           |
-| withoutTransaction(fn)          | Propagation.Never            |
+| Function                         | Equivalent propagation       |
+|----------------------------------|------------------------------|
+| newTransaction(fn, options?)     | Propagation.RequiresNew      |
+| ensureTransaction(fn, options?)  | Propagation.Required         |
+| withTransaction(fn)              | Propagation.RequiresExisting |
+| nestTransaction(fn, options?)    | Propagation.Nested           |
+| withoutTransaction(fn)           | Propagation.Never            |
+| supportsTransaction(fn)          | Propagation.Supports         |
 
 ### adoptTransaction(tx, fn)
 
@@ -151,6 +152,7 @@ Propagation controls what happens when `transact()` is called and a transaction 
 | Propagation.RequiresNew      | Start new transaction     | Push new independent transaction onto internal stack |
 | Propagation.Nested           | Start new transaction     | Create a savepoint within the existing transaction   |
 | Propagation.RequiresExisting | Throw                     | Join existing                                        |
+| Propagation.Supports         | Run without a transaction | Join existing                                        |
 | Propagation.Never            | Run without a transaction | Throw                                                |
 
 ### Propagation.Required (default)
@@ -239,6 +241,33 @@ async function deductStock(productId: number, qty: number) {
   }, { propagation: Propagation.RequiresExisting });
 }
 ```
+
+### Propagation.Supports
+
+Joins the active transaction if there is one, and otherwise runs the callback directly against the database without starting one. Use it for reads that should see a surrounding transaction's uncommitted changes when called within one, but should not pay for a transaction when called standalone.
+
+```ts
+async function findWidget(id: number) {
+  return transact(async (conn) => {
+    return conn.select().from(widgets).where(eq(widgets.id, id));
+  }, { propagation: Propagation.Supports });
+}
+
+// standalone — a single round trip
+await findWidget(1);              // SELECT
+
+// within a transaction — joins it, sees uncommitted changes
+await transact(async () => {
+  await saveWidget({ name: 'Widget' });
+  await findWidget(1);
+});
+```
+
+Under `Propagation.Required` the standalone call would issue `BEGIN`, `SELECT` and `COMMIT` — three round trips to wrap a statement that is already atomic on its own. `Propagation.Supports` issues only the `SELECT`.
+
+The trade-off is that the callback has no atomicity or isolation of its own when no transaction is active. A write under `Propagation.Supports` is not an error, but it commits immediately and cannot be rolled back by anything, so reserve it for reads.
+
+Note that `drizzle-transact` cannot distinguish "no transaction is active" from "a transaction is active but was never adopted". If a transaction was opened outside the library and not passed to [`adoptTransaction`](#adopting-external-transactions), `Propagation.Supports` runs on a separate connection and silently misses that transaction's uncommitted changes. `Propagation.Required` has the same blind spot in that situation, and can additionally deadlock when writes contend. Adopt external transactions and neither arises.
 
 ### Propagation.Never
 

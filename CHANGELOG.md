@@ -4,6 +4,12 @@ All notable changes to this project are documented here.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.2.0] - 2026-09-05
+
+### Added
+
+- `Propagation.Supports` and its sugar function `supportsTransaction(fn)` join the active transaction if there is one, and otherwise run the callback directly against the database without starting one. Under `Propagation.Required` a standalone read issues `BEGIN`, `SELECT` and `COMMIT` — three round trips to wrap a statement that is already atomic on its own; `Propagation.Supports` issues only the `SELECT`, while still participating fully when called within a transaction. The callback has no atomicity or isolation of its own when no transaction is active, so it is intended for reads. Note that drizzle-transact cannot distinguish "no transaction is active" from "a transaction is active but was never adopted": against an unadopted external transaction, `Propagation.Supports` runs on a separate connection and silently misses its uncommitted changes, so external transactions should be passed to `adoptTransaction`.
+
 ## [1.1.0] - 2026-09-02
 
 ### Added
@@ -56,6 +62,7 @@ Initial release.
 - `createTransact` builds a transaction manager around your Drizzle database instance, propagating the active transaction through `AsyncLocalStorage` so it never needs to be passed between functions.
 - Propagation modes: `Required`, `RequiresNew`, `Nested`, `RequiresExisting`, and `Never`.
 
+[1.2.0]: https://github.com/cressie176/drizzle-transact/compare/v1.1.0...v1.2.0
 [1.1.0]: https://github.com/cressie176/drizzle-transact/compare/v1.0.4...v1.1.0
 [1.0.4]: https://github.com/cressie176/drizzle-transact/compare/v1.0.3...v1.0.4
 [1.0.3]: https://github.com/cressie176/drizzle-transact/compare/v1.0.2...v1.0.3
