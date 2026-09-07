@@ -116,6 +116,7 @@ const [order] = await transact(async (tx) => {
 |----------------|----------------|----------------------|---------------------------------------------------|
 | propagation    | Propagation    | Propagation.Required | Controls how the transaction is started or reused |
 | isolationLevel | IsolationLevel | driver default       | Sets the transaction isolation level              |
+| accessMode     | AccessMode     | driver default       | Sets the transaction access mode                  |
 
 #### Syntactic Sugar
 
@@ -303,6 +304,29 @@ const result = await transact(async (tx) => {
 | Serializable    | SERIALIZABLE     |
 
 Not all databases support all isolation levels. Refer to your Drizzle driver documentation.
+
+## Access Modes
+
+```ts
+import { AccessMode } from 'drizzle-transact';
+```
+
+The `accessMode` option is passed to the underlying Drizzle transaction. Like `isolationLevel`, it is only applied when a new transaction is started, and is silently ignored when joining an existing one.
+
+```ts
+const report = await transact(async (tx) => {
+  return tx.select().from(accounts);
+}, { accessMode: AccessMode.ReadOnly });
+```
+
+| Value     | SQL equivalent |
+|-----------|----------------|
+| ReadOnly  | READ ONLY      |
+| ReadWrite | READ WRITE     |
+
+`AccessMode.ReadOnly` turns an intention into a guarantee: any write inside the transaction is rejected by the database rather than silently committed, so a callback that is only supposed to read cannot be quietly extended into one that writes. `AccessMode.ReadWrite` matches the usual database default, so its purpose is to state the requirement explicitly where the default has been changed, for example a session or role configured read-only.
+
+Not all databases support access modes. Refer to your Drizzle driver documentation.
 
 ## Adopting External Transactions
 

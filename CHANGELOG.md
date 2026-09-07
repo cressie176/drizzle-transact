@@ -4,10 +4,11 @@ All notable changes to this project are documented here.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [1.2.0] - 2026-09-05
+## [1.2.0] - 2026-09-07
 
 ### Added
 
+- `AccessMode.ReadOnly` and `AccessMode.ReadWrite` set the transaction access mode through the `accessMode` option: `transact(fn, { accessMode: AccessMode.ReadOnly })` starts a READ ONLY transaction, so the database rejects any write inside it rather than silently committing one. `AccessMode.ReadWrite` matches the usual database default and exists to state the requirement explicitly where that default has been changed, such as a session or role configured read-only. Like `isolationLevel`, the option is only applied when a new transaction is started and is silently ignored when joining an existing one.
 - `Propagation.Supports` and its sugar function `supportsTransaction(fn)` join the active transaction if there is one, and otherwise run the callback directly against the database without starting one. Under `Propagation.Required` a standalone read issues `BEGIN`, `SELECT` and `COMMIT` — three round trips to wrap a statement that is already atomic on its own; `Propagation.Supports` issues only the `SELECT`, while still participating fully when called within a transaction. The callback has no atomicity or isolation of its own when no transaction is active, so it is intended for reads. Note that drizzle-transact cannot distinguish "no transaction is active" from "a transaction is active but was never adopted": against an unadopted external transaction, `Propagation.Supports` runs on a separate connection and silently misses its uncommitted changes, so external transactions should be passed to `adoptTransaction`.
 
 ## [1.1.0] - 2026-09-02

@@ -14,9 +14,15 @@ export enum IsolationLevel {
   Serializable = 'serializable',
 }
 
+export enum AccessMode {
+  ReadOnly = 'read only',
+  ReadWrite = 'read write',
+}
+
 export interface TransactOptions {
   propagation?: Propagation;
   isolationLevel?: IsolationLevel;
+  accessMode?: AccessMode;
 }
 
 export type TransactFn<TDb> = <TResult>(
@@ -28,6 +34,7 @@ export type SugarFn<TDb> = <TResult>(fn: (tx: TDb) => Promise<TResult>) => Promi
 
 export interface IsolationOptions {
   isolationLevel?: IsolationLevel;
+  accessMode?: AccessMode;
 }
 
 export interface TransactBundle<TDb> {
